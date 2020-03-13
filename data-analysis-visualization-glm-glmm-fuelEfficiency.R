@@ -82,7 +82,7 @@ summary(lmm_make)
 
 
 ## ----------------------------------------------------------------------------------------------------------------------------
-my_random_effects <- lme4::ranef(make_lmer, condVar=TRUE)
+my_random_effects <- lme4::ranef(lmm_make, condVar=TRUE)
 
 ranef_df <- as.data.frame(my_random_effects)
 # ggplot
@@ -214,5 +214,5 @@ lattice::dotplot(lme4::ranef(glmm_make), condVar = TRUE)
 
 
 ## ----plot_1------------------------------------------------------------------------------------------------------------------
-Pmisc::ranefPlot(myFitMakeTmb, grpvar = "makeFac",  level = 0.5, maxNames = 12)
+Pmisc::ranefPlot(glmm_make, grpvar = "makeFac",  level = 0.5, maxNames = 12)
 

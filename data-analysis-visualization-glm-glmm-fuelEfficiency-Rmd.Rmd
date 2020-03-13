@@ -2,7 +2,9 @@
 title: "Statistical Modelling of Fuel Efficiency"
 author: "Brian Pan"
 date: "3/10/2020"
-output: html_document
+output:
+  md_document:
+    variant: markdown_github
 ---
 
 ```{r setup, include=FALSE, message=FALSE, echo=TRUE}
@@ -109,7 +111,7 @@ That means, the import of the random intercept helps us explain 17 percent more 
 \
 Exploring the intercepts for each make:
 ```{r}
-my_random_effects <- lme4::ranef(make_lmer, condVar=TRUE)
+my_random_effects <- lme4::ranef(lmm_make, condVar=TRUE)
 
 ranef_df <- as.data.frame(my_random_effects)
 # ggplot
@@ -259,10 +261,6 @@ lme4::VarCorr(glmm_make)
 lattice::dotplot(lme4::ranef(glmm_make), condVar = TRUE)
 ```
 The random effects are quite different.\
-Another plot with Pmisc pkg:
-```{r plot_1}
-Pmisc::ranefPlot(myFitMakeTmb, grpvar = "makeFac",  level = 0.5, maxNames = 12)
-```
 \
 We see that the random effect works good, thus we conclude that this model is the final model that we would use in predicting the relationship between the vehicle fuel efficiency and the year, the transmission type, the make, the number of cylinders, the car types, and the FWD.\
 \
