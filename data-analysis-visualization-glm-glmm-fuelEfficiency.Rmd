@@ -1,0 +1,153 @@
+---
+title: "Statistical Modelling of Fuel Efficiency"
+author: "Brian Pan"
+date: "3/10/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, message=FALSE, echo=TRUE}
+library(Pmisc)
+library(tidyverse)
+library(lme4)
+knitr::opts_chunk$set(echo = TRUE)
+```
+A data description is available at https://www.fueleconomy.gov/feg/ws/index.shtml#vehicle.\
+\
+```{r, data loading}
+cUrl =  'https://www.fueleconomy.gov/feg/epadata/vehicles.csv.zip'
+cFile = file.path(tempdir(), basename(cUrl))
+download.file(cUrl, cFile)
+cFile2 = unzip(cFile, exdir=tempdir())
+x = read.table(cFile2, sep=',', header=TRUE, stringsAsFactors=FALSE)
+```
+\
+```{r data cleaning}
+# have a look
+head(x)
+# Restrict to non-electric vehicles, since electic vehicles are hard to compare with.
+xSub = x[grep("Electricity|CNG", x$fuelType, invert=TRUE), ]
+# Create a decade variable, centerd on 2000
+xSub$decade = (xSub$year - 2000)/10
+# Create a table of the car makes, in order form most to least cars in the dataset
+makeTable = sort(table(xSub$make), decreasing=TRUE)
+# Use the table above, to make a factor that returns unique car makes.
+xSub$makeFac = factor(xSub$make, levels=names(makeTable))
+# Make a factor for the number of cylinders, (return unique values for cylinders),
+# and make 4-cylinders vehicle the reference group.
+xSub$cylFac = relevel(factor(xSub$cylinders), '4')
+# Check this worked
+levels(xSub$cylFac)
+# Get rid of vehicles with missing cylinder number
+xSub = xSub[!is.na(xSub$cylFac), ]
+# Make the transmission variable nicer, use grepl function to search the pattern:
+xSub$transmission = factor(
+  grepl("Manual", xSub$trany), levels=c(FALSE,TRUE),
+	labels = c('Automatic', 'Manual'))
+# Look at the classes of vehicle
+table(xSub$VClass)
+# Make a variable indicating if the vehicle had four-wheel drive
+xSub$FWD = grepl("([[:punct:]]|[[:space:]])+4(WD|wd)",  xSub$VClass)
+# Make a new, simpler vehicle type variable
+xSub$type = gsub("Vans.*", "Vans",  xSub$VClass)
+xSub$type = gsub("Vehicles", "Vehicle", xSub$type)
+xSub$type = gsub("Standard[[:space:]]+", "", xSub$type)
+xSub$type = factor(gsub("([[:punct:]]|[[:space:]])+(2|4)(WD|wd)", "",  xSub$type))
+```
+\
+We are interested in some variables:\
+**comb08**: A measure of fuel use across highway and city driving;\
+**decade**: Which year the car was made in, centered on 2000;\
+**transmission**: Indicating whether the vehicles are manual or automatic;\
+**makeFac**: The make of the cars;\
+**cylFac**: Number of cylinders;\
+**type**: The type of the cars;\
+**FWD**: Indicating whether the car is four-wheel drive or not.\
+\
+After selecting the variables, we get the final dataset:
+```{r final dataset}
+# final dataset
+car_final <- xSub %>% 
+  select(comb08, decade, transmission, makeFac, cylFac, type, FWD)
+car_final
+```
+As it shown in the above table, there are 41696 observations, 1 numerical response variable, and 6 covariates (5 categorical).\
+\
+```{r linear model}
+lm = lm(comb08 ~., data = car_final)
+# summary(lm)
+```
+However, I have concerned about the independence assumption for linear regression, because there are several car makers producing multiple vehicle types, which means, for example, the Audi Branch produces A3, A4, A5, A7, etc., and their fuel efficiencies are somehow related.\
+\
+I would like to visualize fuel efficiency by make:
+```{r diagram_fuelEffByMake}
+# Using tidyverse
+car_final %>% 
+  mutate(grand_mean = mean(comb08)) %>% 
+  group_by(makeFac) %>% 
+  mutate(n_make = n()) %>% 
+  filter(n_make >= 1000 | n_make %in% (5:15)) %>% 
+  mutate(mean = mean(comb08)) %>% 
+  ggplot(aes(x = makeFac, y = comb08)) +
+  geom_boxplot() +
+  geom_point(aes(y=mean), color = "red") +
+  geom_hline(aes(yintercept = grand_mean), color = "blue") +
+  coord_flip()
+```
+It is reasonable to conclude that there are correlations between different types under the same make. Thus, we should fit a linear mixed model.\
+\
+Fitting a LMM:
+```{r lmm model}
+lmm_make <- lme4::lmer(comb08 ~ cylFac + 
+                  decade + transmission + 
+                  (1|makeFac),
+                data=car_final)
+summary(lmm_make)
+```
+**makeFac** has a variance ($\sigma^2$) under random effects with a value of 3.308, that is the random itercept, meaning the variance between groups. Residual has a variance of 9.238, and that is represented by $\tau^2$.\
+<center>$\sigma^2/(\sigma^2+\tau^2)=0.17$</center>\
+That means, the import of the random intercept helps us explain 17 percent more of the variance, which is good.\
+\
+Exploring the intercepts for each make:
+```{r}
+my_random_effects <- lme4::ranef(make_lmer, condVar=TRUE)
+
+ranef_df <- as.data.frame(my_random_effects)
+# ggplot
+ranef_df %>% 
+  ggplot(aes(x = grp, y = condval, ymin = condval - 2*condsd, ymax = condval + 2*condsd)) +
+  geom_point() +
+  geom_errorbar() +
+  coord_flip()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
