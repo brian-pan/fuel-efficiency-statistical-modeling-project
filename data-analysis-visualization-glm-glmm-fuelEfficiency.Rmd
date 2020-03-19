@@ -119,6 +119,71 @@ ranef_df %>%
   geom_errorbar() +
   coord_flip()
 ```
+The black solid points in the diagram above represent the relative estimated values of each car makes. And the lines represent the confidence intervals respectively. And we see there are some non-overlapped CIs, meaning there exist at least two random intercepts are not equal. Thus, import random effect is helpful.\
+\
+Fuel efficiency of auto manufacturers adjusted for engine type:
+```{r diagram_automanufacturers}
+x = data.frame(
+	make = rownames(my_random_effects$makeFac),
+	est = my_random_effects$makeFac[[1]],
+	se = drop(attributes(my_random_effects$makeFac)$postVar),
+	stringsAsFactors = FALSE
+	)
+x$lower = x$est - 2*x$se
+x$upper = x$est + 2*x$se
+x = x[x$se < 2, ]
+x = x[order(x$est), ]
+
+x$index = rank(x$est)
+x$accurate = rank(x$se) < 40
+
+x$col= rep_len(RColorBrewer::brewer.pal(8, 'Set2'), nrow(x))
+x$colTrans = paste0(x$col, '40')
+x$colLine = x$col
+x[!x$accurate,'colLine'] = x[!x$accurate,'colTrans']
+
+x$cex = -log(x$se) 
+x$cex = x$cex - min(x$cex)
+x$cex = 3*x$cex / max(x$cex)
+
+
+x$textpos = rep_len(c(4,2), nrow(x))
+x[!x$accurate & x$est > 0, 'textpos'] = 4
+x[!x$accurate & x$est < 0, 'textpos'] = 2
+
+x$textloc = x$est
+
+
+x$textCex = c(0.5, 0.9)[1+x$accurate]
+
+
+par(mar=c(4,0,0,0), bty='n')
+plot(x$est, x$index, yaxt='n', xlim = range(x$est),
+	#xlim = range(x[,c('lower','upper')]),
+	xlab='mpg', ylab='', pch=15, col=x$colTrans , cex=x$cex)
+
+x[!x$accurate & x$est > 0, 'textloc'] = par('usr')[1]
+x[!x$accurate & x$est < 0, 'textloc'] = par('usr')[2]
+
+abline(v=0, col='grey')
+segments(x$lower, x$index, x$upper, x$index, pch=15, col=x$colLine)
+text(
+	x$textloc, 
+	x$index, x$make,
+	pos = x$textpos,
+	col=x$col,
+	cex=x$textCex, offset=1)
+```
+Looking at the complex diagram above, it is reasonable to conclude that the tendency follows a "S" shape, and that is confirming the random intercept is useful.\
+\
+After exploring the diagrams, we are going to focus on whether the covariates are useful.\
+RUN a linear mixed model, adding number of cylinders, vehichle type and FWD:
+```{r lmm_add_variables}
+lmm_make_2 = lme4::lmer(comb08~cylFac+type+FWD+decade+transmission+
+                          (1|makeFac),
+                        data = car_final)
+summary(lmm_make_2)
+```
 
 
 
