@@ -184,6 +184,53 @@ lmm_make_2 = lme4::lmer(comb08~cylFac+type+FWD+decade+transmission+
                         data = car_final)
 summary(lmm_make_2)
 ```
+To find which model is better, we will conduct a likelihood ratio test:
+```{r LRT}
+lmtest::lrtest(lmm_make_2, lmm_make)
+```
+The p-value is significant, therefore we prefer model 1 (lmm_make_2).\
+\
+Fit LMM with random slope:
+```{r LMM_randomSlope}
+lmm_make_3 = lme4::lmer(comb08 ~ cylFac+type+FWD+decade+transmission+
+                          (1+decade|makeFac),
+                        data=car_final)
+summary(lmm_make_3)
+```
+Conduct another LRT to compare the random slope:
+```{r LRT2}
+lmtest::lrtest(lmm_make_2, lmm_make_3)
+```
+the p-value is significant, therefore we say the random slope "decade" is needed.\
+\
+**However**, the problem here is the p-value is always significant, because the sample size is too big. This is due to the test being on a boundary condition ($\sigma^2>0$). To fix that, we need to reduce the sample size.\
+```{r reduce sample size}
+# restrict the data to just car make with more than 800 vehicles
+car_800 <- car_final %>%
+  mutate(grand_mean = mean(comb08)) %>%
+  group_by(makeFac) %>%
+  mutate(n_make = n()) %>%
+  filter(n_make >= 800)
+# re-fit model with new dataset
+lmm_make_reduced1 = lme4::lmer(comb08~cylFac+type+FWD+decade+transmission+(1|makeFac), data = car_800)
+# re-fit model with new dataset random slope
+lmm_make_reduced2 = lme4::lmer(comb08~cylFac+type+FWD+decade+transmission+(1+decade|makeFac), data = car_800)
+# redo LRT
+lmtest::lrtest(lmm_make_reduced1, lmm_make_reduced2)
+```
+The p-value is still significant, we should include the random slope, meaning that there are significant differences between the slopes of each car make.\
+\
+Check the slopes by graphing:
+```{r diagram_sloperandom}
+car_800 %>%
+  ggplot(aes(x=decade, y=comb08))+
+  geom_point(alpha=0.1)+
+  geom_smooth(method = "lm")+
+  facet_wrap(~makeFac)
+```
+This diagram is sort of surprising. It seems the slopes among different makes are similar.\
+This is one of the issue with LRT, for very large datasets, we wil often see a significant p-value, we'd hesitate to claim it looks like we need different slopes when eyeballing that data.\
+\
 
 
 
