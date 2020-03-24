@@ -231,6 +231,42 @@ car_800 %>%
 This diagram is sort of surprising. It seems the slopes among different makes are similar.\
 This is one of the issue with LRT, for very large datasets, we wil often see a significant p-value, we'd hesitate to claim it looks like we need different slopes when eyeballing that data.\
 \
+Use car_final data again!\
+We are intending to check whether the response value needs a link function.\
+```{r histogram}
+# hist of response
+hist(car_final$comb08)
+```
+As we can see, this is not normal.\
+Double check the result with ggplot,
+```{r ggplot response}
+# ggplot
+car_final %>%
+  ggplot(aes(x=comb08))+
+  geom_histogram(fill="darkgrey", color="black", bins=60)
+```
+Indeed, it is a right-skewed gamma (since continuous) distribution instead of normal. We should use link function log.\
+The distribution is centered at 20, the mean will be higher than the median due to the right-skew. The highest value is almost 60.\
+We are concerned about fitting just Linear Mixed Model.\
+Fit a generalized linear mixed model:
+```{r GLMM}
+glmm_make = lme4::glmer(comb08 ~ cylFac+transmission+decade+(1|makeFac),
+                        family=Gamma(link=log),
+                        data=xSub[xSub$year < 2000, ])
+
+lme4::VarCorr(glmm_make)
+
+lattice::dotplot(lme4::ranef(glmm_make), condVar = TRUE)
+```
+The random effects are quite different.\
+Another plot with Pmisc pkg:
+```{r plot_1}
+Pmisc::ranefPlot(myFitMakeTmb, grpvar = "makeFac",  level = 0.5, maxNames = 12)
+```
+\
+We see that the random effect works good, thus we conclude that this model is the final model that we would use in predicting the relationship between the vehicle fuel efficiency and the year, the transmission type, the make, the number of cylinders, the car types, and the FWD.\
+\
+**End of the statistical modelling report.**
 
 
 
