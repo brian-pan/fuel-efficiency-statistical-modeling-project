@@ -2,9 +2,9 @@
 title: "Statistical Modelling of Fuel Efficiency"
 author: "Brian Pan"
 date: "3/10/2020"
-output:
+output: 
   md_document:
-    variant: markdown_github
+  variant: markdown_github
 ---
 
 ```{r setup, include=FALSE, message=FALSE, echo=TRUE}
@@ -45,8 +45,6 @@ xSub = xSub[!is.na(xSub$cylFac), ]
 xSub$transmission = factor(
   grepl("Manual", xSub$trany), levels=c(FALSE,TRUE),
 	labels = c('Automatic', 'Manual'))
-# Look at the classes of vehicle
-table(xSub$VClass)
 # Make a variable indicating if the vehicle had four-wheel drive
 xSub$FWD = grepl("([[:punct:]]|[[:space:]])+4(WD|wd)",  xSub$VClass)
 # Make a new, simpler vehicle type variable
@@ -70,7 +68,6 @@ After selecting the variables, we get the final dataset:
 # final dataset
 car_final <- xSub %>% 
   select(comb08, decade, transmission, makeFac, cylFac, type, FWD)
-car_final
 ```
 As it shown in the above table, there are 41696 observations, 1 numerical response variable, and 6 covariates (5 categorical).\
 \
